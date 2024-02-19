@@ -3,6 +3,7 @@
 local M = {}
 
 local notify = require'mind.notify'.notify
+local wk = require('which-key')
 
 -- Selector for keymap.
 --
@@ -12,6 +13,50 @@ local notify = require'mind.notify'.notify
 M.KeymapSelector = {
   NORMAL = 'normal',
   SELECTION = 'selection',
+}
+
+-- weird hack because the `defaults` table returns the values as functions
+-- not strings
+M.keymap_descriptions = {
+  keymaps = {
+    -- keybindings when navigating the tree normally
+    normal = {
+      ['<cr>'] = 'open node',
+      ['<s-cr>'] = 'open data index',
+      ['<tab>'] = 'toggle node',
+      ['<s-tab>'] = 'toggle parent',
+      ['/'] = 'select path',
+      ['$'] = 'change icon menu',
+      c = 'add inside end index',
+      I = 'add inside start',
+      i = 'add inside end',
+      l = 'copy node link',
+      L = 'copy node link index',
+      d = 'delete',
+      D = 'delete file',
+      O = 'add above',
+      o = 'add below',
+      q = 'quit',
+      r = 'rename',
+      R = 'change icon',
+      u = 'make url',
+      x = 'select',
+    },
+
+    -- keybindings when a node is selected
+    selection = {
+      ['<cr>'] = 'open data',
+      ['<tab>'] = 'toggle node',
+      ['<s-tab>'] = 'toggle parent',
+      ['/'] = 'select path',
+      I = 'move inside start',
+      i = 'move inside end',
+      O = 'move above',
+      o = 'move below',
+      q = 'quit',
+      x = 'select',
+    },
+  }
 }
 
 -- Keymaps.
@@ -51,6 +96,16 @@ end
 M.insert_keymaps = function(bufnr, get_tree, data_dir, save_tree, opts)
   local keyset = {}
 
+    wk.register({
+      m = {
+        name = "+mind",
+      },
+    }, {
+      buffer = bufnr,
+      silent = true,
+      noremap = true,
+      prefix = ""
+    })
   for key, _ in pairs(M.keymaps.normal) do
     keyset[key] = true
   end
@@ -67,9 +122,16 @@ M.insert_keymaps = function(bufnr, get_tree, data_dir, save_tree, opts)
     opts = opts
   }
 
+
   for key, _ in pairs(keyset) do
+    local keymap = M.get_keymap()
+    wk.register({
+      ["m"..key] = { function()
+        local cmd = keymap[key]
+        cmd(args)
+      end, M.keymap_descriptions.keymaps.normal[key]}
+    })
     vim.keymap.set('n', key, function()
-      local keymap = M.get_keymap()
 
       if (keymap == nil) then
         notify('no active keymap', vim.log.levels.WARN)
@@ -84,7 +146,7 @@ M.insert_keymaps = function(bufnr, get_tree, data_dir, save_tree, opts)
       end
 
       cmd(args)
-    end, { buffer = bufnr, noremap = true, silent = true })
+    end, { desc = M.keymap_descriptions.keymaps.normal[key], buffer = bufnr, noremap = true, silent = true })
   end
 end
 
